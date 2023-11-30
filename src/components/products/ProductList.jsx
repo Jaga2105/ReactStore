@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { IoIosArrowBack,IoIosArrowForward } from "react-icons/io";
 
 const sortOptions = [
   { name: "Newest First", sort: "id", order: "asc", current: false },
@@ -10,18 +11,49 @@ const sortOptions = [
 
 const ProductList = () => {
 
+  const [sort, setSort] = useState({})
+  const [filter, setFilter] = useState({})
   const [products, setProducts] = useState([]);
+  // const [filterSections, setFilterSections] = useState("")
   // const [sortOption, setSortOption] = useState(sortOptions[0].name);
   const fetchAllProducts = async () => {
     const response = await fetch("http://localhost:8080/products");
     const data = await response.json();
     setProducts(data);
   };
-  const fetchProductsByFilter = async (sort) => {
+  // const fetchProductsByFilter = async (sort) => {
+  //   let queryString = "";
+  //   for (let key in sort) {
+  //     queryString += `${key}=${sort[key]}&`;
+  //   }
+  //   const response = await fetch(
+  //     "http://localhost:8080/products?" + queryString
+  //   );
+  //   const data = await response.json();
+  //   console.log(data);
+  //   setProducts(data);
+  // };
+
+  const fetchProductsByFilter = async (sort, filter) => {
     let queryString = "";
+    // let queryString = {...filterSections}
+    // For sorting
     for (let key in sort) {
       queryString += `${key}=${sort[key]}&`;
     }
+    // for filter by filter sections
+    for(let key in filter){
+      const filterArr = filter[key]
+      let filterText="";
+      if(filterArr.length){
+        const lastFilterText = filterArr[filterArr.length-1]
+        // filterText+=`${lastFilterText},`
+        queryString +=`${key}=${lastFilterText}&`
+      }
+      // queryString +=`${key}=${filterText}&`
+    }
+    console.log(queryString)
+    // setFilterSections(queryString)
     const response = await fetch(
       "http://localhost:8080/products?" + queryString
     );
@@ -29,20 +61,42 @@ const ProductList = () => {
     console.log(data);
     setProducts(data);
   };
-
   const handleSort = (sort) => {
-    fetchProductsByFilter(sort);
+    // fetchProductsByFilter(sort);
     // console.log(sort)
+    setSort(sort)
   };
+  const handleFilter = (e, filterSection, value) =>{
+    let newFilter = {...filter}
+    if(e.target.checked){
+      if(filterSection in newFilter){
+        newFilter[filterSection].push(value)
+      }else{
+        newFilter[filterSection] = [value]
+      }
+    }else{
+      const idx = newFilter[filterSection].indexOf(value);
+      newFilter[filterSection].splice(idx, 1)
+    }
+    setFilter(newFilter)
+    
+    
+    // console.log(newFilter)
+  }
   useEffect(() => {
     fetchAllProducts();
   }, []);
 
+  useEffect(()=>{
+    fetchProductsByFilter(sort,filter)
+  },[sort,filter])
+  console.log(filter)
+
   return (
     // <div>
-    <div className="flex px-6 md:px-20 my-6">
-      <ProductFilter />
-      <div className="w-full lg:w-3/4">
+    <div className="flex px-6 md:px-20 my-2">
+      <ProductFilter handleFilter={handleFilter}/>
+      <div className="w-full lg:w-3/4 xl:w-4/5 lg:ml-[280px] xl:ml-[320px]">
         <ProductSort handleSort={handleSort} />
         {/* sortOptions={sortOptions} showSortOption={showSortOption} setShowSortOption={setShowSortOption} sortOption={sortOption} setSortOption={setSortOption}/> */}
         <div className="grid justify-items-center xsm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
@@ -51,6 +105,7 @@ const ProductList = () => {
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
+        <Pagination/>
       </div>
     </div>
     // </div>
@@ -155,7 +210,7 @@ const ProductSort = ({ handleSort }) => {
   console.log(showSortOption);
 
   return (
-    <div className="flex justify-between items-center bg-white my-4 px-4 py-2 shadow-md md:mx-6 lg:mx-4 xl:mx-4 rounded-md">
+    <div className="flex justify-between items-center bg-white my-4 px-4 py-2 shadow-md md:mx-6 lg:mx-4 xl:mx-[10px] rounded-md">
       {showSortOption && (
         <div
           className="fixed h-[100vh] w-[100vw] top-0 left-0"
@@ -189,41 +244,75 @@ const ProductSort = ({ handleSort }) => {
   );
 };
 
-const ProductFilter = () => {
+const ProductFilter = ({handleFilter}) => {
   const [filterContents, setFilterContents] = useState([]);
   const [openedAccordionIdx, setOpenedAccordionIdx] = useState(0);
+  const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([])
+  const [filters, setFilters] = useState([]);
 
-  const getFilterContent = (newContent) => {
-    let newFilterContentArr = filterContents;
-    newFilterContentArr.push(newContent);
-    setFilterContents(newFilterContentArr);
-  };
+  const handleOpenedAccordionIdx = ( index ) =>{
+    if(index === openedAccordionIdx){
+      setOpenedAccordionIdx(-1)
+    }else{
+      setOpenedAccordionIdx(index)
+    }
+  }
 
   const fetchCategories = async () => {
     const response = await fetch("http://localhost:8080/categories");
     const data = await response.json();
-    getFilterContent({ title: "Categories", content: data });
+    setCategories(data)
   };
   const fetchBrands = async () => {
     const response = await fetch("http://localhost:8080/brands");
     const data = await response.json();
-    getFilterContent({ title: "Brands", content: data });
+    setBrands(data)
   };
   useEffect(() => {
     fetchCategories();
     fetchBrands();
   }, []);
-  console.log(filterContents);
+  // console.log(filterContents);
+  // const filters = [
+  //   {
+  //     name: "Category",
+  //     option: categories
+  //   },
+  //   {
+  //     name: "Brands",
+  //     option: categories
+  //   }
+  // ]
+  useEffect(()=>{
+    setFilters(
+      [
+        {
+          name: "Categories",
+          section: "category",
+          option: categories
+        },
+        {
+          name: "Brands",
+          section: "brand",
+          option: brands
+        }
+      ]
+    )
+  }, [categories,brands])
+  console.log(filters)
   return (
-    <div className="hidden fixed w-1/4 lg:block my-4 mr-4 h-[calc(100vh-100px)] overflow-y-scroll">
-      {filterContents.map((filterContent, index) => (
+    <div className="hidden fixed w-1/4 xl:w-1/5 lg:block my-4 mr-4 h-[calc(100vh-124px)] rounded-t-md hover:overflow-y-scroll">
+      {filters.map((filter, index) => (
         <FilterAccordion
-          key={filterContent.title}
-          filterTitle={filterContent.title}
-          filterContent={filterContent.content}
+          key={filter.name}
+          filterContent={filter}
+          // filterTitle={filter.name}
+          // filterContent={filter.option}
           index={index}
           openedAccordionIdx={openedAccordionIdx}
-          setOpenedAccordionIdx={setOpenedAccordionIdx}
+          handleOpenedAccordionIdx={handleOpenedAccordionIdx}
+          handleFilter={handleFilter}
         />
       ))}
     </div>
@@ -231,15 +320,16 @@ const ProductFilter = () => {
 };
 
 const FilterAccordion = ({
-  filterTitle,
+  // filterTitle,
+  // filterContent,
   filterContent,
   index,
   openedAccordionIdx,
-  setOpenedAccordionIdx
+  handleOpenedAccordionIdx,
+  handleFilter
 }) => {
-  // const [openAccordionIdx, setOpenAccordionIdx] = useState(0)
-  console.log(filterContent)
-  // const {filterTitle, Content} = filterContent;
+  const {name, section, option} = filterContent
+  
   return (
     
     <>
@@ -247,9 +337,9 @@ const FilterAccordion = ({
         className={`flex justify-between items-center py-4 px-8 border-2 cursor-pointer ${
           openedAccordionIdx === index ? "rounded-t-md" : "rounded-md"
         }`}
-        onClick={() => setOpenedAccordionIdx(index)}
+        onClick={() => handleOpenedAccordionIdx(index)}
       >
-        <div className="text-xl ">{filterTitle}</div>
+        <div className="text-xl ">{name}</div>
         {openedAccordionIdx === index ? (
           <FaChevronUp style={{ color: "gray" }} />
         ) : (
@@ -258,15 +348,16 @@ const FilterAccordion = ({
       </div>
       {openedAccordionIdx === index && (
         <div className="bg-white px-8 rounded-b-md border-x-2 border-b-2 flex flex-col pt-2">
-          {filterContent.map((content) => (
+          {option.map((content) => (
             <div
               key={content.label}
-              className="flex items-center pb-2 xl:text-lg"
+              className="flex items-start pb-2 xl:text-lg"
             >
               <input
                 type="checkbox"
                 name={content}
-                className="mr-2 mt-1 cursor-pointer"
+                className="mr-2 mt-2 cursor-pointer"
+                onChange={(e)=>handleFilter(e, section, content.value)}
               />
               <label htmlFor="category">{content.label}</label>
             </div>
@@ -277,4 +368,25 @@ const FilterAccordion = ({
   );
 };
 
+const Pagination = () =>{
+  const pages = [1,2,3,4,5]
+  return (
+    <div className="flex justify-end my-4 px-4 py-2 md:mx-6 lg:mx-4 xl:mx-[10px]">
+      <div className="flex justify-center items-center px-2 py-1 bg-white mr-2 rounded-sm text-black cursor-pointer h-8 w-8 shadow-md hover:bg-gray-200">
+      <IoIosArrowBack />
+      </div>
+      <div className="flex">
+      {Array.from({length: 5}).map((page,index)=>(
+        <div className="flex justify-center px-2 py-1 bg-white mr-2 rounded-sm cursor-pointer h-8 w-8 shadow-md hover:bg-gray-200">{index+1}</div>
+      ))}
+      </div>
+      <div className="flex justify-center items-center px-2 py-1 bg-white mr-2 rounded-sm text-black cursor-pointer h-8 w-8 shadow-md hover:bg-gray-200">
+      <IoIosArrowForward />
+      </div>
+    </div>
+  );
+}
+
 export default ProductList;
+
+
